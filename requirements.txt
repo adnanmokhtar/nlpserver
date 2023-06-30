@@ -13,5 +13,6 @@ BeautifulSoup4
 afinn
 textblob
 transformers
+fuzzywuzzy
 #summa
 #pattern
