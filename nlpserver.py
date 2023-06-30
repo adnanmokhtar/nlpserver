@@ -170,49 +170,31 @@ def gensim_summarize():
 
 	return jsonify(data)
 
+def compute_similarity(query, texts):
+    from fuzzywuzzy import fuzz
+    
+    scores = {}
+    for text in texts:
+        score = fuzz.ratio(query, text) / 100.0
+        scores[text] = score
 
-@app.route("/gensim/similarity", methods=['GET', 'POST'])
+    return scores
+
+@app.route("/gensim/similarity", methods=['POST'])
 def gensim_similarity():
+    try:
+        query = request.form['query']
+        texts = request.form['texts'].split(',')
 
-    import jieba
+        similarity_scores = compute_similarity(query, texts)
 
-    from gensim import corpora, models, similarities
-    data = dict(default_data)
-    data['message'] = "get similarity percentage of phases"
-    
-    params = {}
-        
-    params = request.form  # postdata
-    
-    phases = [params['text1'],'abcd efgh']
+        best_option = max(similarity_scores, key=similarity_scores.get)
+        text_scores = similarity_scores
 
-    keyword = params['text2']
+        return jsonify({'best_option': best_option, 'text_scores': text_scores})
 
-    texts = []
-
-    for phase in phases:
-        texts.append(list(jieba.cut(phase)))
-    
-    dictionary = corpora.Dictionary(texts)
-
-    feature_cnt = len(dictionary.token2id)
-
-    corpus = [dictionary.doc2bow(text) for text in texts]
-    
-    tfidf = models.TfidfModel(corpus)
-
-    kw_vector = dictionary.doc2bow( list(jieba.cut(keyword)) )
-
-    index = similarities.SparseMatrixSimilarity(tfidf[corpus], num_features = feature_cnt)
-
-    sim = index[tfidf[kw_vector]]
-
-    data['sim']= sim.tolist()
-    #for i in range(len(sim)):
-        #data['simlarity'+str((i+1))] = str(sim[i])
-
-    return jsonify(data)
-
+    except KeyError:
+        return jsonify({'error': 'Invalid request format'}), 400
 
 @app.route("/polyglot/neighbours", methods=['GET'])
 def embeddings():
@@ -473,7 +455,6 @@ def afinn_sentiment():
 @app.route("/newspaper", methods=['GET', 'POST'])
 def newspaper():
 	from newspaper import Article
-	import langid
 
 	data = dict(default_data)
 	data['message'] = "Article Extraction by Newspaper, and Language Detection by Langid"
